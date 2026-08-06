@@ -1,42 +1,44 @@
 # Casting Defect Inspector
 
-Automated visual quality inspection for industrial casting defects using a binary
-classifier (ok vs. defective) for submersible pump impellers, paired with
-Grad-CAM interpretability and an LLM-generated plain-English QA explanation,
-served through an interactive Streamlit app.
-
-Built as a fast, defensible demonstration of an end-to-end CV + LLM pipeline:
-transfer learning, model interpretability, and applied LLM integration in a
-real-world industrial automation context.
-
-**[Live demo →](#)** *(link once deployed)*
+A binary classification pipeline for automated visual inspection of cast
+industrial parts, paired with Grad-CAM-based interpretability and an
+LLM-generated explanation layer, served through an interactive Streamlit app.
 
 ![App screenshot](assets/screenshots/app_demo.png)
 
-## Problem
+## Overview
 
-Manual visual inspection of cast industrial parts is slow, inconsistent, and
-doesn't scale. This project automates defect detection on grayscale images of
-submersible pump impellers, and critically explains *why* a part was
-flagged, so the output is usable by a QA operator, not just a model score.
+Cast industrial parts (submersible pump impellers) are visually inspected for
+surface defects such as blowholes, cracks, and porosity. This project
+implements and compares two transfer-learning strategies for automating that
+classification, evaluates model behavior using Grad-CAM, and adds a
+plain-language explanation layer intended to make model output legible to a
+non-technical QA operator.
 
-## Pipeline
+## Method
 
-1. **Classification** — ResNet50 backbone (ImageNet-pretrained), evaluated as
-   both a frozen linear-probe baseline and a fine-tuned (`layer4` unfrozen)
-   variant, compared head-to-head.
-2. **Interpretability** — Grad-CAM (and Grad-CAM++) overlay showing which
-   region of the part drove the prediction.
-3. **Explanation** — the prediction, confidence, and Grad-CAM region are
-   passed to the LLM, which generates a short, plain-English QA-style
-   explanation an inspector could actually read.
-4. **App** — a Streamlit interface: upload or select an image, see the
-   prediction, heatmap, and explanation together in one screen.
+**Classification.** ResNet50 (ImageNet-pretrained) is evaluated under two
+regimes: (1) a frozen-backbone linear probe, and (2) fine-tuning with
+`layer4` unfrozen. Both are trained and evaluated on the same stratified
+train/validation/test split, with the test set held out until final
+evaluation.
+
+**Interpretability.** Grad-CAM (and Grad-CAM++, compared as a secondary
+ablation) is used to localize the image region driving each prediction.
+
+**Explanation.** The predicted label, confidence, and Grad-CAM region are
+passed to Claude Haiku, which generates a short natural-language description
+of the flagged region — intended as a QA-readable supplement to the raw
+prediction, not a replacement for the classifier's output.
+
+**Application.** A Streamlit interface accepts an uploaded or selected image
+and displays the prediction, Grad-CAM overlay, and generated explanation
+together.
 
 ## Results
 
-*(filled in after Session 2 — ablation table: linear-probe baseline vs.
-fine-tuned, precision/recall/F1/ROC-AUC on the held-out test set)*
+*(populated after the fine-tuning ablation — precision/recall/F1/ROC-AUC for
+both regimes on the held-out test set)*
 
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
 |---|---|---|---|---|---|
@@ -46,8 +48,8 @@ fine-tuned, precision/recall/F1/ROC-AUC on the held-out test set)*
 ## Dataset
 
 [Real-life Industrial Dataset of Casting Product](https://www.kaggle.com/datasets/ravirajsinh45/real-life-industrial-dataset-of-casting-product)
-(Kaggle) — ~7,300 grayscale images of submersible pump impellers, pre-split
-train/test, labeled `ok_front` / `def_front`.
+(Kaggle) — 7,348 grayscale images of submersible pump impellers, pre-split
+into train/test, labeled `ok_front` / `def_front`.
 
 ## Setup
 
@@ -55,16 +57,25 @@ train/test, labeled `ok_front` / `def_front`.
 git clone https://github.com/<you>/casting-defect-inspector
 cd casting-defect-inspector
 pip install -r requirements.txt
-# download dataset into data/casting_data/ — see data/README.md
 ```
+
+Dataset download instructions are in `data/README.md`.
+
+## Limitations
+
+- Binary classification only; does not distinguish defect type.
+- Trained on a single dataset from a single imaging setup — generalization
+  to other parts, lighting, or camera configurations is untested.
+- LLM explanations are descriptive, not diagnostic — they summarize the
+  Grad-CAM region in text but are not grounded in a domain-specific
+  knowledge base.
 
 ## Roadmap
 
-- [ ] Multi-class defect categorization (beyond binary ok/defective)
-- [ ] Confidence calibration (temperature scaling + reliability diagram)
-- [ ] Grad-CAM vs. Grad-CAM++ ablation
-- [ ] RAG-based explanation layer (grounded in a QA knowledge base rather
-      than a general LLM prompt)
+- [ ] Multi-class defect categorization
+- [ ] Confidence calibration (temperature scaling, reliability diagram)
+- [ ] Grad-CAM vs. Grad-CAM++ ablation, formalized
+- [ ] RAG-based explanation layer grounded in QA documentation
 
 ## License
 
