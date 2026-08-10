@@ -1,81 +1,99 @@
-# Casting Defect Inspector
+# RoadVision Nepal Phase 2: IDD Baseline Segmentation
 
-A binary classification pipeline for automated visual inspection of cast
-industrial parts, paired with Grad-CAM-based interpretability and an
-LLM-generated explanation layer, served through an interactive Streamlit app.
-
-![App screenshot](assets/screenshots/app_demo.png)
+A ResNet50 + U-Net baseline for binary road segmentation (drivable vs. 
+non-drivable) trained on the Indian Driving Dataset (IDD), with evaluation 
+on validation splits and qualitative testing on Kathmandu road imagery.
 
 ## Overview
 
-Cast industrial parts (submersible pump impellers) are visually inspected for
-surface defects such as blowholes, cracks, and porosity. This project
-implements and compares two transfer-learning strategies for automating that
-classification, evaluates model behavior using Grad-CAM, and adds a
-plain-language explanation layer intended to make model output legible to a
-non-technical QA operator.
+This project addresses Phase 1's failure: classical CV methods break on 
+unmarked, semi-structured Indian roads. Phase 2 establishes a deep learning 
+baseline using the [Indian Driving Dataset (IDD)](https://idd.insaan.iiit.ac.in/) 
+as a structurally similar proxy, before deploying inference on Kathmandu roads.
+
+**Key question answered in Phase 1:** Unmarked roads cause classical segmentation 
+to fail. **Phase 2 approach:** Train a supervised baseline on IDD, then test 
+generalization to real Kathmandu imagery.
 
 ## Method
 
-**Classification.** ResNet50 (ImageNet-pretrained) is evaluated under two
-regimes: (1) a frozen-backbone linear probe, and (2) fine-tuning with
-`layer4` unfrozen. Both are trained and evaluated on the same stratified
-train/validation/test split, with the test set held out until final
-evaluation.
+**Model.** ResNet50 encoder (ImageNet-pretrained) + U-Net decoder, binary 
+output (background=0, drivable=1). Training alternates between frozen-encoder 
+warmup (stabilize decoder) and full fine-tuning (layer4+).
 
-**Interpretability.** Grad-CAM (and Grad-CAM++, compared as a secondary
-ablation) is used to localize the image region driving each prediction.
+**Loss.** Combined CE + Dice (50/50 split, tunable via config) to handle 
+class imbalance (drivable area typically 10–30% of image).
 
-**Explanation.** The predicted label, confidence, and Grad-CAM region are
-passed to Claude Haiku, which generates a short natural-language description
-of the flagged region — intended as a QA-readable supplement to the raw
-prediction, not a replacement for the classifier's output.
+**Training Loop.** Per-epoch metrics (IoU, precision, recall), checkpointing 
+by best validation IoU, reproducibility via seed + config snapshot + pip 
+freeze + commit hash.
 
-**Application.** A Streamlit interface accepts an uploaded or selected image
-and displays the prediction, Grad-CAM overlay, and generated explanation
-together.
-
-## Results
-
-*(populated after the fine-tuning ablation — precision/recall/F1/ROC-AUC for
-both regimes on the held-out test set)*
-
-| Model | Accuracy | Precision | Recall | F1 | ROC-AUC |
-|---|---|---|---|---|---|
-| Linear-probe baseline | – | – | – | – | – |
-| Fine-tuned (layer4)   | – | – | – | – | – |
+**Augmentation.** Flip, color jitter, conservative rotation (baseline-level 
+conservatism to avoid overfitting early).
 
 ## Dataset
 
-[Real-life Industrial Dataset of Casting Product](https://www.kaggle.com/datasets/ravirajsinh45/real-life-industrial-dataset-of-casting-product)
-(Kaggle) — 7,348 grayscale images of submersible pump impellers, pre-split
-into train/test, labeled `ok_front` / `def_front`.
+[Indian Driving Dataset (IDD)](https://idd.insaan.iiit.ac.in/) — 10k+ images 
+of Indian roads (marked and unmarked) with 34-class semantic segmentation 
+masks. For this baseline, labels are collapsed to binary: 
+drivable (road surface) vs. non-drivable (vegetation, sky, etc.).
+
+Input: 3-channel RGB, 512×512.  
+Output: binary mask (drivable/non-drivable).
 
 ## Setup
 
 ```bash
-git clone https://github.com/<you>/casting-defect-inspector
-cd casting-defect-inspector
+git clone https://github.com/SenorPsycho/Casting-defect-inspector.git
+cd Road_Segmentation
+
+# Create venv and install
+python -m venv .env
+.\.env\Scripts\Activate.ps1  # Windows
+source .env/bin/activate      # Linux/Mac
+
 pip install -r requirements.txt
 ```
 
-Dataset download instructions are in `data/README.md`.
+Download IDD (Parts I + II) and organize under `Dataset/` as per 
+`Dataset/README.md`.
+
+## Results
+
+*(populated after Phase 2 baseline training completes)*
+
+| Split | IoU | Precision | Recall | Comment |
+|---|---|---|---|---|
+| Validation | – | – | – | – |
+| Test (held-out) | – | – | – | – |
+
+Qualitative: sample predictions on IDD val set + live inference on 
+Kathmandu imagery (Phase 2's differentiator).
+
+## Training
+
+```bash
+python Model_Train/train.py
+```
+
+Config hyperparameters in `Model_Train/config.yaml`. Training snapshots 
+logged to `Model_Train/runs/<timestamp>/`.
 
 ## Limitations
 
-- Binary classification only; does not distinguish defect type.
-- Trained on a single dataset from a single imaging setup — generalization
-  to other parts, lighting, or camera configurations is untested.
-- LLM explanations are descriptive, not diagnostic — they summarize the
-  Grad-CAM region in text but are not grounded in a domain-specific
-  knowledge base.
+- Binary only; does not distinguish road type (asphalt, dirt, etc.).
+- Trained on IDD (Indian but still urban/marked-road-heavy); transfer to 
+  unmarked Kathmandu roads is a key Phase 2 ablation.
+- Evaluated on validation splits; full cross-dataset generalization testing 
+  deferred to Phase 2 live deployment.
 
 ## Roadmap
 
-- [ ] Multi-class defect categorization
-- [ ] Confidence calibration (temperature scaling, reliability diagram)
-- [ ] Grad-CAM vs. Grad-CAM++ ablation, formalized
-- [ ] RAG-based explanation layer grounded in QA documentation
+- [ ] Phase 2a: Full training run on college PC, benchmark on IDD val
+- [ ] Phase 2b: Qualitative inference on Kathmandu imagery (owns generalization test)
+- [ ] Phase 2c: Streamlit/Gradio demo (real-time upload → segmentation overlay)
+- [ ] Phase 3: Multi-class road-type segmentation (asphalt vs. dirt vs. pothole)
+- [ ] Phase 3+: Temporal modeling (video sequences for consistency)
 
 ## License
 
