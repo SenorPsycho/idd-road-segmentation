@@ -1,0 +1,33 @@
+# config.yaml -- RoadVision Nepal Phase 2: IDD baseline training config
+#
+# This file is the single source of truth for a training run's hyperparameters.
+# init_run() (run_utils.py) copies a snapshot of this into every runs/<timestamp>/
+# folder, so a given run's config.yaml is always the exact settings that produced it,
+# independent of what this template later changes to.
+
+seed: 42
+
+data:
+  root_dir: "Dataset"     # repo root's Dataset/ folder (post-flattening, no IDD_Segmentation subfolder)
+  image_size: 512          # locked: matches Day 1 loader/test_loader.py output
+
+model:
+  encoder_name: resnet50
+  encoder_weights: imagenet
+  classes: 2                # locked: 2-channel softmax output, to pair with CrossEntropyLoss(ignore_index=255)
+
+train:
+  batch_size: 8              # DEFAULT, not locked -- raise if college PC's VRAM allows during smoke test
+  num_epochs: 30              # DEFAULT, not locked -- adjust once real loss curves are visible
+  lr: 0.0001
+  weight_decay: 0.0001
+  freeze_until_epoch: 3        # locked: encoder frozen for epochs 0-2, unfrozen from epoch 3 on; revisit after tomorrow's runs
+  num_workers: 4                 # college PC (i9-14900K) can parallelize data loading; drop to 0 if you hit Windows multiprocessing issues
+
+loss:
+  ignore_index: 255
+  ce_weight: 0.5              # locked default: even CE/Dice split; shift toward dice_weight if drivable-class recall looks weak
+  dice_weight: 0.5
+
+run:
+  base_dir: "runs"             # runs/<timestamp>/ folders, per the timestamp-naming convention locked earlier
