@@ -17,12 +17,12 @@ model:
   classes: 2                # locked: 2-channel softmax output, to pair with CrossEntropyLoss(ignore_index=255)
 
 train:
-  batch_size: 8              # DEFAULT, not locked -- raise if college PC's VRAM allows during smoke test
+  batch_size: 24              # DEFAULT, not locked -- raise if college PC's VRAM allows during smoke test
   num_epochs: 30              # DEFAULT, not locked -- adjust once real loss curves are visible
   lr: 0.0001
   weight_decay: 0.0001
   freeze_until_epoch: 3        # locked: encoder frozen for epochs 0-2, unfrozen from epoch 3 on; revisit after tomorrow's runs
-  num_workers: 4                 # college PC (i9-14900K) can parallelize data loading; drop to 0 if you hit Windows multiprocessing issues
+  num_workers: 6                # college PC (i9-14900K) can parallelize data loading; drop to 0 if you hit Windows multiprocessing issues
 
 loss:
   ignore_index: 255
