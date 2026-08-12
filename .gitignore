@@ -1,24 +1,22 @@
 Dataset/
-
 # Virtual environments
 .venv/
 venv/
 env/
 .env/
 .env
-
 # Python cache and test artifacts
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .coverage
 htmlcov/
-
 # Jupyter / notebooks
 .ipynb_checkpoints/
-
 # Editors / OS files
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+# Model checkpoints (large binaries, not needed in git history)
+runs/*/*.pt
