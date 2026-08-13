@@ -36,6 +36,30 @@ def batch_confusion_counts(logits: torch.Tensor, targets: torch.Tensor, ignore_i
     return tp, fp, fn, tn
 
 
+def compute_ratios(tp: int, fp: int, fn: int, tn: int, eps: float = 1e-6) -> dict:
+    """
+    Computes IoU / precision / recall from a set of TP/FP/FN/TN counts.
+
+    Pulled out as a standalone function (rather than inlined only inside
+    MetricsAccumulator.compute()) so the exact same formula can be reused
+    for a SINGLE image's counts (e.g. in evaluate.py, for per-image IoU used
+    to pick qualitative examples) without duplicating the math in a second
+    place where it could drift out of sync.
+    """
+    iou = tp / (tp + fp + fn + eps)
+    precision = tp / (tp + fp + eps)
+    recall = tp / (tp + fn + eps)
+    return {
+        "iou": iou,
+        "precision": precision,
+        "recall": recall,
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "tn": tn,
+    }
+
+
 class MetricsAccumulator:
     """
     Accumulates confusion counts across all batches in an epoch, then computes
@@ -69,18 +93,7 @@ class MetricsAccumulator:
         self.tn += tn
 
     def compute(self) -> dict:
-        iou = self.tp / (self.tp + self.fp + self.fn + self.eps)
-        precision = self.tp / (self.tp + self.fp + self.eps)
-        recall = self.tp / (self.tp + self.fn + self.eps)
-        return {
-            "iou": iou,
-            "precision": precision,
-            "recall": recall,
-            "tp": self.tp,
-            "fp": self.fp,
-            "fn": self.fn,
-            "tn": self.tn,
-        }
+        return compute_ratios(self.tp, self.fp, self.fn, self.tn, self.eps)
 
 
 if __name__ == "__main__":
